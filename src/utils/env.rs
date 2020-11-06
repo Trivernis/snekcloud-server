@@ -4,7 +4,7 @@ const VAR_LISTEN_ADDRESS: &str = "SNEKCLOUD_LISTEN_ADDRESS";
 const VAR_NODE_ID: &str = "SNEKCLOUD_NODE_ID";
 
 pub fn get_key_file_storage() -> String {
-    dotenv::var(VAR_KEY_FILE_STORAGE).unwrap_or("keys".to_string())
+    dotenv::var(VAR_KEY_FILE_STORAGE).unwrap_or("nodes".to_string())
 }
 
 pub fn get_private_key_path() -> String {
