@@ -1,5 +1,5 @@
 [package]
-name = "snekcloud-node"
+name = "snekcloud-server"
 version = "0.1.0"
 authors = ["trivernis <trivernis@protonmail.com>"]
 edition = "2018"
