@@ -22,6 +22,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 
 [[package]]
+name = "base64"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
+
+[[package]]
 name = "bitflags"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -492,6 +498,8 @@ checksum = "fbee7696b84bbf3d89a1c2eccff0850e3047ed46bfcd2e92c29a2d074d57e252"
 name = "snekcloud-node"
 version = "0.1.0"
 dependencies = [
+ "base64",
+ "rand",
  "rusqlite",
  "vented",
 ]
@@ -555,9 +563,9 @@ checksum = "6454029bf181f092ad1b853286f23e2c507d8e8194d01d92da4a55c274a5508c"
 
 [[package]]
 name = "vented"
-version = "0.1.0"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1b9a45811ac7741c477738e79759119950cc09f1afc2d53673b83560c35e53d"
+checksum = "b92984cc8ed261509126ebc9b043c814e98f3d8da9dbf2e1d21e072c6906c8a7"
 dependencies = [
  "byteorder",
  "crossbeam-utils",
