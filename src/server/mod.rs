@@ -1,7 +1,6 @@
 use vented::server::VentedServer;
 use crate::utils::result::SnekcloudResult;
 use vented::crypto::SecretKey;
-use std::path::PathBuf;
 use vented::server::data::Node;
 use vented::WaitGroup;
 
