@@ -22,7 +22,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            listen_addresses: vec!["127.0.0.1:22222".to_string()],
+            listen_addresses: vec![],
             node_id: get_node_id(),
             private_key: PathBuf::from("node_key"),
             node_data_dir: PathBuf::from("nodes"),

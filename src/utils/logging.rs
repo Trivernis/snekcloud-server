@@ -13,7 +13,7 @@ pub fn init_logger() {
             let color = get_level_style(record.level());
             writeln!(
                 buf,
-                "{:<12} {:<45}| {} {}: {}",
+                "{:<25} {:<45}| {} {}: {}",
                 format!("thread::{}", thread::current().name().unwrap_or("main")).dimmed(),
                 record.target().dimmed().italic(),
                 Local::now().format("%Y-%m-%dT%H:%M:%S"),

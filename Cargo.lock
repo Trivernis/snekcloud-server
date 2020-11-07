@@ -520,6 +520,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "num_cpus"
+version = "1.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "05499f3756671c15885fee9034446956fff3f243d6077b91e5767df161f766b3"
+dependencies = [
+ "hermit-abi",
+ "libc",
+]
+
+[[package]]
 name = "opaque-debug"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -843,8 +853,10 @@ dependencies = [
  "hostname",
  "log",
  "mac_address",
+ "num_cpus",
  "rand",
  "rusqlite",
+ "scheduled-thread-pool",
  "serde 1.0.117",
  "structopt",
  "toml",
@@ -1011,9 +1023,9 @@ checksum = "f1bddf1187be692e79c5ffeab891132dfb0f236ed36a43c7ed39f1165ee20191"
 
 [[package]]
 name = "vented"
-version = "0.1.2"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b92984cc8ed261509126ebc9b043c814e98f3d8da9dbf2e1d21e072c6906c8a7"
+checksum = "3b3526b3689e915e1545250137a9c06875736629ef2def374e78c9755ee32868"
 dependencies = [
  "byteorder",
  "crossbeam-utils",

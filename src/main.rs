@@ -8,6 +8,7 @@ use std::fs;
 use structopt::StructOpt;
 use vented::crypto::SecretKey;
 use crate::data::node_data::NodeData;
+use crate::modules::heartbeat::HeartbeatModule;
 
 pub(crate) mod utils;
 pub(crate) mod server;
@@ -76,6 +77,7 @@ fn start_server(_options: Opt, settings: &Settings) -> SnekcloudResult<()> {
     for address in &settings.listen_addresses {
         server.add_listen_address(address.clone());
     }
+    server.register_module(HeartbeatModule::new())?;
     server.run()?;
 
     Ok(())
