@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::thread;
 use std::time::{Duration, Instant};
 
-const SERVER_TICK_RATE_MS: u64 = 1;
+const SERVER_TICK_RATE_MS: u64 = 10;
 
 pub struct SnekcloudServer {
     inner: VentedServer,

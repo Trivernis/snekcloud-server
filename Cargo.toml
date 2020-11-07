@@ -7,7 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-vented = "0.3.1"
+vented = "0.4.0"
 rusqlite = "0.24.1"
 rand = "0.7.3"
 base64 = "0.13.0"
