@@ -2,3 +2,5 @@
 .idea
 *.env
 test
+config
+nodes

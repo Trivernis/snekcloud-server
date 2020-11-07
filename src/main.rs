@@ -1,6 +1,5 @@
 use crate::server::SnekcloudServer;
-use crate::utils::get_node_id;
-use crate::utils::env::{get_private_key_path, get_key_file_storage, get_listen_address};
+use crate::utils::settings::{Settings, get_settings};
 use crate::utils::keys::{extract_private_key, read_node_keys, generate_private_key, armor_private_key};
 use std::path::PathBuf;
 use crate::utils::result::SnekcloudResult;
@@ -13,6 +12,7 @@ use crate::data::node_data::NodeData;
 pub(crate) mod utils;
 pub(crate) mod server;
 pub(crate) mod data;
+pub(crate) mod modules;
 
 #[derive(StructOpt, Debug)]
 struct Opt {
@@ -47,6 +47,8 @@ struct WriteInfoFileOptions {
 fn main() -> SnekcloudResult<()>{
     init_logger();
     let opt: Opt = Opt::from_args();
+    let settings = get_settings()?;
+
     if let Some(command) = opt.sub_command {
         match command {
             SubCommand::GenerateKey(options) => {
@@ -55,27 +57,30 @@ fn main() -> SnekcloudResult<()>{
                 fs::write(options.output_file, string_content)?;
             },
             SubCommand::WriteInfoFile(options) => {
-                let key = get_private_key()?;
-                let data = NodeData::with_address(get_node_id(), get_listen_address(), key.public_key());
+                let key = get_private_key(&settings)?;
+                let data = NodeData::with_addresses(settings.node_id, settings.listen_addresses, key.public_key());
                 data.write_to_file(options.output_file)?;
             }
         }
     } else {
-        start_server(opt)?;
+        start_server(opt, &settings)?;
     }
 
     Ok(())
 }
 
-fn start_server(_options: Opt) -> SnekcloudResult<()> {
-    let keys = read_node_keys(&PathBuf::from(get_key_file_storage()))?;
-    let mut server = SnekcloudServer::new(get_node_id(), get_private_key()?, keys, 8);
-    server.add_listen_address(get_listen_address());
+fn start_server(_options: Opt, settings: &Settings) -> SnekcloudResult<()> {
+    let keys = read_node_keys(&settings.node_data_dir)?;
+    let mut server = SnekcloudServer::new(settings.node_id.clone(), get_private_key(settings)?, keys, 8);
+
+    for address in &settings.listen_addresses {
+        server.add_listen_address(address.clone());
+    }
     server.run()?;
 
     Ok(())
 }
 
-fn get_private_key() -> SnekcloudResult<SecretKey> {
-    extract_private_key(&fs::read_to_string(get_private_key_path())?)
+fn get_private_key(settings: &Settings) -> SnekcloudResult<SecretKey> {
+    extract_private_key(&fs::read_to_string(&settings.private_key)?)
 }

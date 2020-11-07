@@ -23,18 +23,9 @@ When run without a subcommand the server executes normally.
 
 ## Configuration
 
-Basic server configuration is done in .env files.
-
-|Variable | Description | Default Value |
-|--------|----------|---------------|
-| SNEKCLOUD_NODES_DIR | Directory containing the .toml files for the network nodes| nodes |
-| SNEKCLOUD_PRIVATE_KEY | Path of the private key (generated with generate-key) | node_key |
-| SNEKCLOUD_LISTEN_ADDRESS | The address the server listens on | 127.0.0.1:22222 |
-| SNEKCLOUD_NODE_ID | The NodeID of the instance | None |
-
-The NodeID is a parameter that can either be set manually or is generated
-from the mac-address or hostname depending on what is available.
-
+The configuration for the server has to be done in the config directory.
+This directory will always contain the default configuration `default.toml` and will
+load additional files with the same ending.
 
 ## License
 

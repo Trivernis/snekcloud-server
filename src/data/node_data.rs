@@ -4,20 +4,21 @@ use crate::utils::keys::{armor_public_key, extract_public_key};
 use std::path::PathBuf;
 use crate::utils::result::SnekcloudResult;
 use std::fs;
+use crate::utils::write_toml_pretty;
 
 #[derive(Serialize, Deserialize)]
 pub struct NodeData {
     pub id: String,
-    pub address: Option<String>,
+    pub addresses: Vec<String>,
     public_key: String,
 }
 
 impl NodeData {
-    pub fn with_address(id: String, address: String, public_key: PublicKey) -> Self {
+    pub fn with_addresses(id: String, addresses: Vec<String>, public_key: PublicKey) -> Self {
         let public_key = armor_public_key(public_key);
         Self {
             id,
-            address: Some(address),
+            addresses,
             public_key
         }
     }
@@ -32,10 +33,7 @@ impl NodeData {
 
     /// Writes the data to the given file
     pub fn write_to_file(&self, path: PathBuf) -> SnekcloudResult<()> {
-        let content = toml::to_string(self)?;
-        fs::write(path, content.as_bytes())?;
-
-        Ok(())
+        write_toml_pretty(&path, self)
     }
 
     pub fn public_key(&self) -> PublicKey {

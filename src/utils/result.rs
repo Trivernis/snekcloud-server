@@ -14,6 +14,8 @@ pub enum SnekcloudError {
     TomlDeserializeError(toml::de::Error),
     TomlSerializeError(toml::ser::Error),
     InvalidKey,
+    ConfigError(config::ConfigError),
+    GlobPatternError(glob::PatternError),
 }
 
 impl fmt::Display for SnekcloudError {
@@ -25,6 +27,8 @@ impl fmt::Display for SnekcloudError {
             Self::InvalidKey => write!(f, "Invalid Key!"),
             Self::TomlDeserializeError(e) => write!(f, "Toml Deserialization Error: {}", e),
             Self::TomlSerializeError(e) => write!(f, "Toml Serialization Error: {}", e),
+            Self::ConfigError(e) => write!(f, "Config Error: {}",e),
+            Self::GlobPatternError(e) => write!(f, "Glob Error {}", e),
         }
     }
 }
@@ -50,13 +54,25 @@ impl From<base64::DecodeError> for SnekcloudError {
 }
 
 impl From<toml::ser::Error> for SnekcloudError {
-    fn from(other: toml::ser::Error) -> Self {
-        Self::TomlSerializeError(other)
+    fn from(error: toml::ser::Error) -> Self {
+        Self::TomlSerializeError(error)
     }
 }
 
 impl From<toml::de::Error> for SnekcloudError {
-    fn from(other: toml::de::Error) -> Self {
-        Self::TomlDeserializeError(other)
+    fn from(error: toml::de::Error) -> Self {
+        Self::TomlDeserializeError(error)
+    }
+}
+
+impl From<config::ConfigError> for SnekcloudError {
+    fn from(error: config::ConfigError) -> Self {
+        Self::ConfigError(error)
+    }
+}
+
+impl From<glob::PatternError> for SnekcloudError {
+    fn from(error: glob::PatternError) -> Self {
+        Self::GlobPatternError(error)
     }
 }

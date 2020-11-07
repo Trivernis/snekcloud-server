@@ -3,6 +3,7 @@ use crate::utils::result::SnekcloudResult;
 use vented::crypto::SecretKey;
 use vented::server::data::Node;
 use vented::WaitGroup;
+use crate::modules::Module;
 
 pub struct SnekcloudServer {
     inner: VentedServer,
@@ -32,5 +33,10 @@ impl SnekcloudServer {
         }
 
         Ok(())
+    }
+
+    /// Registers a module on the server
+    pub fn register_module(&mut self, module: &mut impl Module) -> SnekcloudResult<()> {
+        module.init(&mut self.inner)
     }
 }

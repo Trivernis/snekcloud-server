@@ -1,8 +1,9 @@
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 use vented::crypto::{SecretKey, PublicKey};
 use crate::utils::result::{SnekcloudResult, SnekcloudError};
 use vented::server::data::Node;
 use crate::data::node_data::NodeData;
+use std::fs::create_dir;
 
 const PRIVATE_KEY_HEADER_LINE: &str = "---BEGIN-SNEKCLOUD-PRIVATE-KEY---\n";
 const PRIVATE_KEY_FOOTER_LINE: &str = "\n---END-SNEKCLOUD-PRIVATE-KEY---";
@@ -12,6 +13,9 @@ const PUBLIC_KEY_FOOTER_LINE: &str = "\n---END-SNEKCLOUD-PUBLIC-KEY---";
 
 /// Reads a folder of node public keys
 pub fn read_node_keys(path: &PathBuf) -> SnekcloudResult<Vec<Node>> {
+    if !Path::new(path).exists() {
+        create_dir(path)?;
+    }
     let dir_content = path.read_dir()?;
 
     let content = dir_content
@@ -22,9 +26,9 @@ pub fn read_node_keys(path: &PathBuf) -> SnekcloudResult<Vec<Node>> {
         })
         .filter(|(meta, _)|meta.is_file())
         .filter_map(|(_, entry)|{
-            let data = NodeData::from_file(entry.path()).ok()?;
+            let mut data = NodeData::from_file(entry.path()).ok()?;
 
-            Some(Node {public_key: data.public_key(), address: data.address, id: data.id})
+            Some(Node {public_key: data.public_key(), address: data.addresses.pop(), id: data.id})
         }).collect();
 
     Ok(content)
