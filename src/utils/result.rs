@@ -13,6 +13,7 @@ pub enum SnekcloudError {
     Base64DecodeError(base64::DecodeError),
     TomlDeserializeError(toml::de::Error),
     TomlSerializeError(toml::ser::Error),
+    JsonError(serde_json::error::Error),
     InvalidKey,
     ConfigError(config::ConfigError),
     GlobPatternError(glob::PatternError),
@@ -29,6 +30,7 @@ impl fmt::Display for SnekcloudError {
             Self::TomlSerializeError(e) => write!(f, "Toml Serialization Error: {}", e),
             Self::ConfigError(e) => write!(f, "Config Error: {}",e),
             Self::GlobPatternError(e) => write!(f, "Glob Error {}", e),
+            Self::JsonError(e) => write!(f, "JSON Error: {}", e),
         }
     }
 }
@@ -74,5 +76,11 @@ impl From<config::ConfigError> for SnekcloudError {
 impl From<glob::PatternError> for SnekcloudError {
     fn from(error: glob::PatternError) -> Self {
         Self::GlobPatternError(error)
+    }
+}
+
+impl From<serde_json::error::Error> for SnekcloudError {
+    fn from(error: serde_json::error::Error) -> Self {
+        Self::JsonError(error)
     }
 }

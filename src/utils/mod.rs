@@ -37,3 +37,10 @@ pub fn write_toml_pretty<T: Serialize>(path: &PathBuf, value: &T) -> SnekcloudRe
 
     Ok(())
 }
+
+pub fn write_json_pretty<T: Serialize>(path: &PathBuf, value: &T) -> SnekcloudResult<()> {
+    let string_value = serde_json::to_string_pretty(value)?;
+    fs::write(path, string_value.as_bytes())?;
+
+    Ok(())
+}

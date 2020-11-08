@@ -4,6 +4,7 @@ use scheduled_thread_pool::ScheduledThreadPool;
 use vented::result::VentedResult;
 
 pub mod heartbeat;
+pub mod nodes_refresh;
 
 pub trait Module {
     fn name(&self) -> String;

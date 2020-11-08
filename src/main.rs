@@ -9,6 +9,10 @@ use structopt::StructOpt;
 use vented::crypto::SecretKey;
 use crate::data::node_data::NodeData;
 use crate::modules::heartbeat::HeartbeatModule;
+use crate::modules::nodes_refresh::NodesRefreshModule;
+
+#[macro_use]
+extern crate lazy_static;
 
 pub(crate) mod utils;
 pub(crate) mod server;
@@ -48,7 +52,7 @@ struct WriteInfoFileOptions {
 fn main() -> SnekcloudResult<()>{
     init_logger();
     let opt: Opt = Opt::from_args();
-    let settings = get_settings()?;
+    let settings = get_settings();
 
     if let Some(command) = opt.sub_command {
         match command {
@@ -78,6 +82,7 @@ fn start_server(_options: Opt, settings: &Settings) -> SnekcloudResult<()> {
         server.add_listen_address(address.clone());
     }
     server.register_module(HeartbeatModule::new())?;
+    server.register_module(NodesRefreshModule::new())?;
     server.run()?;
 
     Ok(())

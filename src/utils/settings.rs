@@ -4,6 +4,8 @@ use crate::utils::{get_node_id, write_toml_pretty};
 use std::fs;
 use std::path::{Path, PathBuf};
 use config::File;
+use crate::modules::heartbeat::settings::HeartbeatSettings;
+use crate::modules::nodes_refresh::settings::NodesRefreshSettings;
 
 
 const CONFIG_DIR: &str = "config/";
@@ -17,6 +19,16 @@ pub struct Settings {
     pub node_id: String,
     pub private_key: PathBuf,
     pub node_data_dir: PathBuf,
+    /// List of trusted nodes
+    pub trusted_nodes: Vec<String>,
+    // modules need to be last because it's a table
+    pub modules: ModuleSettings,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ModuleSettings {
+    pub heartbeat: HeartbeatSettings,
+    pub nodes_refresh: NodesRefreshSettings,
 }
 
 impl Default for Settings {
@@ -26,11 +38,30 @@ impl Default for Settings {
             node_id: get_node_id(),
             private_key: PathBuf::from("node_key"),
             node_data_dir: PathBuf::from("nodes"),
+            trusted_nodes: vec![],
+            modules: ModuleSettings::default(),
         }
     }
 }
 
-pub fn get_settings() -> SnekcloudResult<Settings> {
+impl Default for ModuleSettings {
+    fn default() -> Self {
+        Self {
+            heartbeat: HeartbeatSettings::default(),
+            nodes_refresh: NodesRefreshSettings::default()
+        }
+    }
+}
+
+/// Returns the settings that are lazily retrieved at runtime
+pub fn get_settings() -> Settings {
+
+    lazy_static! { static ref SETTINGS: Settings = load_settings().expect("Failed to get settings"); }
+
+    SETTINGS.clone()
+}
+
+fn load_settings() -> SnekcloudResult<Settings> {
     if !Path::new(CONFIG_DIR).exists() {
         fs::create_dir(CONFIG_DIR)?;
     }

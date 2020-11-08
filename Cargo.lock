@@ -851,13 +851,16 @@ dependencies = [
  "env_logger",
  "glob",
  "hostname",
+ "lazy_static",
  "log",
  "mac_address",
  "num_cpus",
+ "parking_lot",
  "rand",
  "rusqlite",
  "scheduled-thread-pool",
  "serde 1.0.117",
+ "serde_json",
  "structopt",
  "toml",
  "vented",
@@ -1023,9 +1026,9 @@ checksum = "f1bddf1187be692e79c5ffeab891132dfb0f236ed36a43c7ed39f1165ee20191"
 
 [[package]]
 name = "vented"
-version = "0.4.3"
+version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "576943d091e907e201d53816e80cd1bdca2320bb9a33754dda66e6cc730f0d27"
+checksum = "03ea719ca6db23a76ee5d0f8ebbcd615d9d4954af88b7a88977b9d5a7d469a85"
 dependencies = [
  "byteorder",
  "crossbeam-utils",

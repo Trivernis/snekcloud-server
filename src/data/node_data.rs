@@ -14,6 +14,15 @@ pub struct NodeData {
 }
 
 impl NodeData {
+    pub fn new(id: String, public_key: PublicKey) -> Self {
+        let public_key = armor_public_key(public_key);
+        Self {
+            id,
+            addresses: Vec::with_capacity(0),
+            public_key
+        }
+    }
+
     pub fn with_addresses(id: String, addresses: Vec<String>, public_key: PublicKey) -> Self {
         let public_key = armor_public_key(public_key);
         Self {

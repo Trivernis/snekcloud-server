@@ -4,6 +4,7 @@ use crate::utils::result::{SnekcloudResult, SnekcloudError};
 use vented::server::data::Node;
 use crate::data::node_data::NodeData;
 use std::fs::create_dir;
+use crate::utils::settings::get_settings;
 
 const PRIVATE_KEY_HEADER_LINE: &str = "---BEGIN-SNEKCLOUD-PRIVATE-KEY---\n";
 const PRIVATE_KEY_FOOTER_LINE: &str = "\n---END-SNEKCLOUD-PRIVATE-KEY---";
@@ -17,6 +18,7 @@ pub fn read_node_keys(path: &PathBuf) -> SnekcloudResult<Vec<Node>> {
         create_dir(path)?;
     }
     let dir_content = path.read_dir()?;
+    let trusted_nodes = get_settings().trusted_nodes;
 
     let content = dir_content
         .filter_map(|entry| {
@@ -28,7 +30,7 @@ pub fn read_node_keys(path: &PathBuf) -> SnekcloudResult<Vec<Node>> {
         .filter_map(|(_, entry)|{
             let mut data = NodeData::from_file(entry.path()).ok()?;
 
-            Some(Node {public_key: data.public_key(), address: data.addresses.pop(), id: data.id})
+            Some(Node {public_key: data.public_key(), address: data.addresses.pop(), trusted: trusted_nodes.contains(&data.id), id: data.id})
         }).collect();
 
     Ok(content)
