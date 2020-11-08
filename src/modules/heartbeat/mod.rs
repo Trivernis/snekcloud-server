@@ -1,27 +1,28 @@
-use crate::modules::Module;
-use vented::server::VentedServer;
-use crate::utils::result::SnekcloudResult;
-use scheduled_thread_pool::ScheduledThreadPool;
-use vented::result::{VentedResult};
 use crate::modules::heartbeat::payloads::HeartbeatPayload;
-use std::time::{Instant};
-use vented::event::Event;
-use crate::utils::settings::get_settings;
 use crate::modules::heartbeat::settings::HeartbeatSettings;
-use std::sync::Arc;
+use crate::modules::Module;
+use crate::server::tick_context::TickContext;
+use crate::utils::result::SnekcloudResult;
+use crate::utils::settings::get_settings;
+use crate::utils::write_json_pretty;
 use parking_lot::Mutex;
+use scheduled_thread_pool::ScheduledThreadPool;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use serde::{Serialize, Deserialize};
-use crate::utils::{write_json_pretty};
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+use vented::event::Event;
+use vented::result::VentedResult;
+use vented::server::VentedServer;
 
-pub mod settings;
 mod payloads;
+pub mod settings;
 const HEARTBEAT_BEAT_EVENT: &str = "heartbeat:beat";
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 enum NodeState {
     Alive,
-    Dead
+    Dead,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -56,7 +57,7 @@ impl HeartbeatModule {
         Self {
             last_tick: Instant::now(),
             settings: get_settings().modules.heartbeat,
-            node_states: Arc::new(Mutex::new(HashMap::new()))
+            node_states: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 }
@@ -66,7 +67,11 @@ impl Module for HeartbeatModule {
         "HeartbeatModule".to_string()
     }
 
-    fn init(&mut self, server: &mut VentedServer, pool: &mut ScheduledThreadPool) -> SnekcloudResult<()> {
+    fn init(
+        &mut self,
+        server: &mut VentedServer,
+        pool: &mut ScheduledThreadPool,
+    ) -> SnekcloudResult<()> {
         server.on(HEARTBEAT_BEAT_EVENT, {
             let node_states = Arc::clone(&self.node_states);
 
@@ -76,8 +81,11 @@ impl Module for HeartbeatModule {
                 log::debug!("Latency to node {} is {} ms", payload.node_id, latency);
 
                 let mut states = node_states.lock();
-                Self::insert_state(&mut states, payload.node_id, NodeInfo::alive(latency as u64));
-
+                Self::insert_state(
+                    &mut states,
+                    payload.node_id,
+                    NodeInfo::alive(latency as u64),
+                );
 
                 None
             }
@@ -99,18 +107,34 @@ impl Module for HeartbeatModule {
         Ok(())
     }
 
-    fn boxed(self) -> Box<dyn Module> {
+    fn boxed(self) -> Box<dyn Module + Send + Sync> {
         Box::new(self)
     }
 
-    fn tick(&mut self, server: &mut VentedServer, _: &mut ScheduledThreadPool) -> VentedResult<()> {
+    fn tick(
+        &mut self,
+        mut context: TickContext,
+        pool: &mut ScheduledThreadPool,
+    ) -> VentedResult<()> {
         if self.last_tick.elapsed() > self.settings.interval() {
-            for node in server.nodes() {
-                if let Err(e) = server.emit(node.id.clone(), Event::with_payload(HEARTBEAT_BEAT_EVENT, &HeartbeatPayload::now(server.node_id()))) {
-                    log::debug!("Node {} is not reachable: {}", node.id, e);
-                    let mut states = self.node_states.lock();
-                    Self::insert_state(&mut states, node.id, NodeInfo::dead());
-                }
+            for node in context.nodes() {
+                let mut future = context.emit(
+                    node.id.clone(),
+                    Event::with_payload(
+                        HEARTBEAT_BEAT_EVENT,
+                        &HeartbeatPayload::now(context.node_id().clone()),
+                    ),
+                );
+                let states = Arc::clone(&self.node_states);
+                pool.execute(move || {
+                    if let Some(value) = future.get_value_with_timeout(Duration::from_secs(10)) {
+                        if let Err(e) = &*value {
+                            log::debug!("Node {} is not reachable: {}", node.id, e);
+                            let mut states = states.lock();
+                            Self::insert_state(&mut states, node.id, NodeInfo::dead());
+                        }
+                    }
+                });
             }
             self.last_tick = Instant::now();
         }
@@ -121,7 +145,9 @@ impl Module for HeartbeatModule {
 
 impl HeartbeatModule {
     fn insert_state(states: &mut HashMap<String, Vec<NodeInfo>>, id: String, state: NodeInfo) {
-        lazy_static! {static ref MAX_RECORDS: usize = get_settings().modules.heartbeat.max_record_history;}
+        lazy_static! {
+            static ref MAX_RECORDS: usize = get_settings().modules.heartbeat.max_record_history;
+        }
         if let Some(states) = states.get_mut(&id) {
             if states.len() > *MAX_RECORDS {
                 states.remove(0);

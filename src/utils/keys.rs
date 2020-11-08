@@ -1,10 +1,10 @@
-use std::path::{PathBuf, Path};
-use vented::crypto::{SecretKey, PublicKey};
-use crate::utils::result::{SnekcloudResult, SnekcloudError};
-use vented::server::data::Node;
 use crate::data::node_data::NodeData;
-use std::fs::create_dir;
+use crate::utils::result::{SnekcloudError, SnekcloudResult};
 use crate::utils::settings::get_settings;
+use std::fs::create_dir;
+use std::path::{Path, PathBuf};
+use vented::crypto::{PublicKey, SecretKey};
+use vented::server::data::Node;
 
 const PRIVATE_KEY_HEADER_LINE: &str = "---BEGIN-SNEKCLOUD-PRIVATE-KEY---\n";
 const PRIVATE_KEY_FOOTER_LINE: &str = "\n---END-SNEKCLOUD-PRIVATE-KEY---";
@@ -17,21 +17,20 @@ pub fn read_node_keys(path: &PathBuf) -> SnekcloudResult<Vec<Node>> {
     if !Path::new(path).exists() {
         create_dir(path)?;
     }
-    let dir_content = path.read_dir()?;
     let trusted_nodes = get_settings().trusted_nodes;
 
-    let content = dir_content
-        .filter_map(|entry| {
-            let entry = entry.ok()?;
+    let content = glob::glob(format!("{}/*.toml", path.to_string_lossy()).as_str())?
+        .filter_map(|path| {
+            let mut data = NodeData::from_file(path.ok()?).ok()?;
 
-            Some((entry.metadata().ok()?, entry))
+            Some(Node {
+                public_key: data.public_key(),
+                address: data.addresses.pop(),
+                trusted: trusted_nodes.contains(&data.id),
+                id: data.id,
+            })
         })
-        .filter(|(meta, _)|meta.is_file())
-        .filter_map(|(_, entry)|{
-            let mut data = NodeData::from_file(entry.path()).ok()?;
-
-            Some(Node {public_key: data.public_key(), address: data.addresses.pop(), trusted: trusted_nodes.contains(&data.id), id: data.id})
-        }).collect();
+        .collect();
 
     Ok(content)
 }
@@ -52,8 +51,12 @@ pub fn extract_public_key(content: &str) -> SnekcloudResult<PublicKey> {
 
 /// Extracts a base64 encoded key between the prefix and suffix
 fn extract_key(content: &str, prefix: &str, suffix: &str) -> SnekcloudResult<[u8; 32]> {
-    let mut content = content.strip_prefix(prefix).ok_or(SnekcloudError::InvalidKey)?;
-    content = content.strip_suffix(suffix).ok_or(SnekcloudError::InvalidKey)?;
+    let mut content = content
+        .strip_prefix(prefix)
+        .ok_or(SnekcloudError::InvalidKey)?;
+    content = content
+        .strip_suffix(suffix)
+        .ok_or(SnekcloudError::InvalidKey)?;
 
     let key = base64::decode(content)?;
     if key.len() != 32 {
@@ -67,12 +70,20 @@ fn extract_key(content: &str, prefix: &str, suffix: &str) -> SnekcloudResult<[u8
 
 /// Encodes and encases the public key for text representation
 pub fn armor_public_key(key: PublicKey) -> String {
-    armor_key(key.to_bytes(), PUBLIC_KEY_HEADER_LINE, PUBLIC_KEY_FOOTER_LINE)
+    armor_key(
+        key.to_bytes(),
+        PUBLIC_KEY_HEADER_LINE,
+        PUBLIC_KEY_FOOTER_LINE,
+    )
 }
 
 /// Encodes and encases the secret key for text representation
 pub fn armor_private_key(key: SecretKey) -> String {
-    armor_key(key.to_bytes(), PRIVATE_KEY_HEADER_LINE, PRIVATE_KEY_FOOTER_LINE)
+    armor_key(
+        key.to_bytes(),
+        PRIVATE_KEY_HEADER_LINE,
+        PRIVATE_KEY_FOOTER_LINE,
+    )
 }
 
 /// Returns an armored key

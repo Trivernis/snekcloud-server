@@ -3,7 +3,7 @@ use vented::result::VentedResult;
 use vented::server::VentedServer;
 use crate::utils::result::SnekcloudResult;
 use scheduled_thread_pool::ScheduledThreadPool;
-use vented::server::server_events::{ NodeListPayload};
+use vented::server::server_events::{NodeListPayload, NODE_LIST_REQUEST_EVENT};
 use vented::server::data::Node;
 use std::sync::Arc;
 use parking_lot::Mutex;
@@ -15,6 +15,8 @@ use crate::utils::settings::get_settings;
 use crate::data::node_data::NodeData;
 use std::path::PathBuf;
 use crate::modules::nodes_refresh::settings::NodesRefreshSettings;
+use crate::server::tick_context::TickContext;
+use vented::event::Event;
 
 pub  mod settings;
 
@@ -92,15 +94,15 @@ impl Module for NodesRefreshModule {
         Ok(())
     }
 
-    fn boxed(self) -> Box<dyn Module> {
+    fn boxed(self) -> Box<dyn Module + Send + Sync> {
         Box::new(self)
     }
 
-    fn tick(&mut self, server: &mut VentedServer, _: &mut ScheduledThreadPool) -> VentedResult<()> {
+    fn tick(&mut self, mut context: TickContext, _: &mut ScheduledThreadPool) -> VentedResult<()> {
         if self.last_request.elapsed() > self.settings.update_interval() {
-            if let Err(e) = server.request_node_list() {
-                log::debug!("Failed to refresh node list: {}", e);
-            }
+            context.nodes().iter().filter(|node| node.trusted).for_each(|node| {
+                context.emit(node.id.clone(), Event::new(NODE_LIST_REQUEST_EVENT));
+            });
             self.last_request = Instant::now();
         }
 

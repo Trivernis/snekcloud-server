@@ -1,17 +1,16 @@
-use crate::utils::result::{SnekcloudResult, SnekcloudError};
-use serde::{Serialize, Deserialize};
-use crate::utils::{get_node_id, write_toml_pretty};
-use std::fs;
-use std::path::{Path, PathBuf};
-use config::File;
 use crate::modules::heartbeat::settings::HeartbeatSettings;
 use crate::modules::nodes_refresh::settings::NodesRefreshSettings;
-
+use crate::utils::result::{SnekcloudError, SnekcloudResult};
+use crate::utils::{get_node_id, write_toml_pretty};
+use config::File;
+use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::{Path, PathBuf};
 
 const CONFIG_DIR: &str = "config/";
 const DEFAULT_CONFIG: &str = "config/00_default.toml";
 const GLOB_CONFIG: &str = "config/*.toml";
-const ENV_PREFIX : &str = "SNEKCLOUD";
+const ENV_PREFIX: &str = "SNEKCLOUD";
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Settings {
@@ -19,6 +18,7 @@ pub struct Settings {
     pub node_id: String,
     pub private_key: PathBuf,
     pub node_data_dir: PathBuf,
+    pub num_threads: usize,
     /// List of trusted nodes
     pub trusted_nodes: Vec<String>,
     // modules need to be last because it's a table
@@ -39,6 +39,7 @@ impl Default for Settings {
             private_key: PathBuf::from("node_key"),
             node_data_dir: PathBuf::from("nodes"),
             trusted_nodes: vec![],
+            num_threads: num_cpus::get(),
             modules: ModuleSettings::default(),
         }
     }
@@ -48,15 +49,16 @@ impl Default for ModuleSettings {
     fn default() -> Self {
         Self {
             heartbeat: HeartbeatSettings::default(),
-            nodes_refresh: NodesRefreshSettings::default()
+            nodes_refresh: NodesRefreshSettings::default(),
         }
     }
 }
 
 /// Returns the settings that are lazily retrieved at runtime
 pub fn get_settings() -> Settings {
-
-    lazy_static! { static ref SETTINGS: Settings = load_settings().expect("Failed to get settings"); }
+    lazy_static! {
+        static ref SETTINGS: Settings = load_settings().expect("Failed to get settings");
+    }
 
     SETTINGS.clone()
 }
@@ -70,10 +72,12 @@ fn load_settings() -> SnekcloudResult<Settings> {
     let mut settings = config::Config::default();
     settings
         .merge(config::File::with_name(DEFAULT_CONFIG))?
-        .merge(glob::glob(GLOB_CONFIG)?.map(|path| File::from(path.unwrap()))
-            .collect::<Vec<_>>())?
+        .merge(
+            glob::glob(GLOB_CONFIG)?
+                .map(|path| File::from(path.unwrap()))
+                .collect::<Vec<_>>(),
+        )?
         .merge(config::Environment::with_prefix(ENV_PREFIX))?;
-
 
     settings.try_into().map_err(SnekcloudError::from)
 }
