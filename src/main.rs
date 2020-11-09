@@ -11,7 +11,7 @@ use crate::utils::settings::{get_settings, Settings};
 use std::fs;
 use std::path::PathBuf;
 use structopt::StructOpt;
-use vented::crypto::SecretKey;
+use vented::stream::SecretKey;
 
 #[macro_use]
 extern crate lazy_static;

@@ -11,11 +11,11 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant, UNIX_EPOCH};
-use vented::crypto::PublicKey;
 use vented::event::Event;
 use vented::server::data::Node;
 use vented::server::server_events::{NodeListPayload, NODE_LIST_REQUEST_EVENT};
 use vented::server::VentedServer;
+use vented::stream::PublicKey;
 
 pub mod settings;
 
@@ -58,7 +58,7 @@ impl Module for NodesRefreshModule {
                                 id: node.id,
                                 trusted: false,
                                 public_key: PublicKey::from(node.public_key),
-                                address: node.address,
+                                addresses: node.addresses,
                             },
                         );
                         new_nodes = true;
@@ -83,11 +83,7 @@ impl Module for NodesRefreshModule {
                         .values()
                         .cloned()
                         .map(|node| {
-                            if let Some(address) = node.address {
-                                NodeData::with_addresses(node.id, vec![address], node.public_key)
-                            } else {
-                                NodeData::new(node.id, node.public_key)
-                            }
+                            NodeData::with_addresses(node.id, node.addresses, node.public_key)
                         })
                         .for_each(|data| {
                             let mut path = nodes_folder.clone();
@@ -115,7 +111,7 @@ impl Module for NodesRefreshModule {
     ) -> SnekcloudResult<()> {
         if self.last_request.elapsed() > self.settings.update_interval() {
             context
-                .nodes()
+                .living_nodes()
                 .iter()
                 .filter(|node| node.trusted)
                 .for_each(|node| {

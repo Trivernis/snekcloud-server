@@ -3,8 +3,8 @@ use crate::utils::result::{SnekcloudError, SnekcloudResult};
 use crate::utils::settings::get_settings;
 use std::fs::create_dir;
 use std::path::{Path, PathBuf};
-use vented::crypto::{PublicKey, SecretKey};
 use vented::server::data::Node;
+use vented::stream::{PublicKey, SecretKey};
 
 const PRIVATE_KEY_HEADER_LINE: &str = "---BEGIN-SNEKCLOUD-PRIVATE-KEY---\n";
 const PRIVATE_KEY_FOOTER_LINE: &str = "\n---END-SNEKCLOUD-PRIVATE-KEY---";
@@ -21,11 +21,11 @@ pub fn read_node_keys(path: &PathBuf) -> SnekcloudResult<Vec<Node>> {
 
     let content = glob::glob(format!("{}/*.toml", path.to_string_lossy()).as_str())?
         .filter_map(|path| {
-            let mut data = NodeData::from_file(path.ok()?).ok()?;
+            let data = NodeData::from_file(path.ok()?).ok()?;
 
             Some(Node {
                 public_key: data.public_key(),
-                address: data.addresses.pop(),
+                addresses: data.addresses,
                 trusted: trusted_nodes.contains(&data.id),
                 id: data.id,
             })

@@ -116,7 +116,8 @@ impl Module for HeartbeatModule {
         pool: &mut ScheduledThreadPool,
     ) -> SnekcloudResult<()> {
         if self.last_tick.elapsed() > self.settings.interval() {
-            for node in context.nodes() {
+            log::trace!("Sending heartbeat...");
+            for node in context.living_nodes() {
                 let mut future = context.emit(
                     node.id.clone(),
                     Event::with_payload(
@@ -128,8 +129,7 @@ impl Module for HeartbeatModule {
                 pool.execute(move || {
                     if let Some(Err(e)) = future.get_value_with_timeout(Duration::from_secs(10)) {
                         log::debug!("Node {} is not reachable: {}", node.id, e);
-                        let mut states = states.lock();
-                        Self::insert_state(&mut states, node.id, NodeInfo::dead());
+                        Self::insert_state(&mut states.lock(), node.id, NodeInfo::dead());
                     }
                 });
             }
