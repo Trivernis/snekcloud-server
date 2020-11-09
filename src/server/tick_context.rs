@@ -1,10 +1,11 @@
-use std::sync::mpsc::Sender;
-use vented::event::Event;
-use std::sync::Arc;
-use crate::utils::result::SnekcloudResult;
-use vented::server::data::{AsyncValue, Node};
+use crate::utils::result::SnekcloudError;
 use parking_lot::Mutex;
 use std::collections::HashMap;
+use std::sync::mpsc::Sender;
+use std::sync::Arc;
+use vented::event::Event;
+use vented::server::data::Node;
+use vented::utils::sync::AsyncValue;
 
 #[derive(Clone)]
 pub struct TickContext {
@@ -14,13 +15,17 @@ pub struct TickContext {
 }
 
 pub struct EventInvocation {
-    pub result: AsyncValue<Arc<SnekcloudResult<()>>>,
+    pub result: AsyncValue<(), SnekcloudError>,
     pub event: Event,
     pub target_node: String,
 }
 
 impl TickContext {
-    pub fn new(node_id: String, sender: Sender<EventInvocation>, nodes: Arc<Mutex<HashMap<String, Node>>>) -> Self {
+    pub fn new(
+        node_id: String,
+        sender: Sender<EventInvocation>,
+        nodes: Arc<Mutex<HashMap<String, Node>>>,
+    ) -> Self {
         Self {
             nodes,
             node_id,
@@ -28,13 +33,19 @@ impl TickContext {
         }
     }
 
-    pub fn emit<S: ToString>(&mut self, target_node: S, event: Event) -> AsyncValue<Arc<SnekcloudResult<()>>> {
+    pub fn emit<S: ToString>(
+        &mut self,
+        target_node: S,
+        event: Event,
+    ) -> AsyncValue<(), SnekcloudError> {
         let value = AsyncValue::new();
-        self.event_sender.send(EventInvocation {
-            event,
-            target_node: target_node.to_string(),
-            result: AsyncValue::clone(&value),
-        }).unwrap();
+        self.event_sender
+            .send(EventInvocation {
+                event,
+                target_node: target_node.to_string(),
+                result: AsyncValue::clone(&value),
+            })
+            .unwrap();
 
         value
     }

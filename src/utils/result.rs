@@ -1,8 +1,7 @@
-use vented::result::VentedError;
+use std::error::Error;
 use std::fmt;
 use std::io;
-use std::error::Error;
-
+use vented::utils::result::VentedError;
 
 pub type SnekcloudResult<T> = Result<T, SnekcloudError>;
 
@@ -28,7 +27,7 @@ impl fmt::Display for SnekcloudError {
             Self::InvalidKey => write!(f, "Invalid Key!"),
             Self::TomlDeserializeError(e) => write!(f, "Toml Deserialization Error: {}", e),
             Self::TomlSerializeError(e) => write!(f, "Toml Serialization Error: {}", e),
-            Self::ConfigError(e) => write!(f, "Config Error: {}",e),
+            Self::ConfigError(e) => write!(f, "Config Error: {}", e),
             Self::GlobPatternError(e) => write!(f, "Glob Error {}", e),
             Self::JsonError(e) => write!(f, "JSON Error: {}", e),
         }

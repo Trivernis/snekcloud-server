@@ -12,7 +12,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use vented::event::Event;
-use vented::result::VentedResult;
 use vented::server::VentedServer;
 
 mod payloads;
@@ -115,7 +114,7 @@ impl Module for HeartbeatModule {
         &mut self,
         mut context: TickContext,
         pool: &mut ScheduledThreadPool,
-    ) -> VentedResult<()> {
+    ) -> SnekcloudResult<()> {
         if self.last_tick.elapsed() > self.settings.interval() {
             for node in context.nodes() {
                 let mut future = context.emit(
@@ -127,12 +126,10 @@ impl Module for HeartbeatModule {
                 );
                 let states = Arc::clone(&self.node_states);
                 pool.execute(move || {
-                    if let Some(value) = future.get_value_with_timeout(Duration::from_secs(10)) {
-                        if let Err(e) = &*value {
-                            log::debug!("Node {} is not reachable: {}", node.id, e);
-                            let mut states = states.lock();
-                            Self::insert_state(&mut states, node.id, NodeInfo::dead());
-                        }
+                    if let Some(Err(e)) = future.get_value_with_timeout(Duration::from_secs(10)) {
+                        log::debug!("Node {} is not reachable: {}", node.id, e);
+                        let mut states = states.lock();
+                        Self::insert_state(&mut states, node.id, NodeInfo::dead());
                     }
                 });
             }

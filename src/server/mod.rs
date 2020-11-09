@@ -75,13 +75,14 @@ impl SnekcloudServer {
                 },
             );
         }
-        for mut invocation in rx {
-            match self.inner.emit(invocation.target_node, invocation.event) {
-                Ok(_) => invocation.result.set_value(Arc::new(Ok(()))),
-                Err(e) => invocation
-                    .result
-                    .set_value(Arc::new(Err(SnekcloudError::from(e)))),
-            }
+        for invocation in rx {
+            let mut future = self.inner.emit(invocation.target_node, invocation.event);
+            let mut invocation_result = invocation.result;
+
+            module_pool.lock().execute(move || {
+                let result = future.get_value();
+                invocation_result.result(result.map_err(SnekcloudError::from));
+            });
         }
 
         Ok(())
