@@ -1036,9 +1036,9 @@ checksum = "f1bddf1187be692e79c5ffeab891132dfb0f236ed36a43c7ed39f1165ee20191"
 
 [[package]]
 name = "vented"
-version = "0.10.1"
+version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e15d3be30d3ab31cd2b12f7929b20368fe9e8690dba0dd1d1c405456e6005e79"
+checksum = "3ce039664251094f5b55eee04f5eb82c7e13abca8df6d03601fa975e9fb0a2bf"
 dependencies = [
  "byteorder",
  "crossbeam-channel",
