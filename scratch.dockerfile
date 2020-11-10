@@ -1,5 +1,4 @@
-FROM rust:alpine AS builder
-RUN apk add --no-cache libgcc musl-dev
+FROM rust AS builder
 WORKDIR /usr/src
 RUN USER=root cargo new snekcloud-server
 WORKDIR /usr/src/snekcloud-server

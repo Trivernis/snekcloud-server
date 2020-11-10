@@ -4,7 +4,7 @@ use crate::utils::result::{SnekcloudError, SnekcloudResult};
 use crate::utils::settings::get_settings;
 use parking_lot::Mutex;
 use scheduled_thread_pool::ScheduledThreadPool;
-use std::cmp::{max, min};
+use std::cmp::max;
 use std::collections::HashMap;
 use std::mem;
 use std::sync::mpsc::channel;
