@@ -857,6 +857,7 @@ dependencies = [
  "num_cpus",
  "parking_lot",
  "rand",
+ "regex",
  "rusqlite",
  "scheduled-thread-pool",
  "serde 1.0.117",

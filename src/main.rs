@@ -7,7 +7,7 @@ use crate::utils::keys::{
 };
 use crate::utils::logging::init_logger;
 use crate::utils::result::SnekcloudResult;
-use crate::utils::settings::{get_settings, Settings};
+use crate::utils::settings::{get_settings, Settings, ValidateSettings};
 use std::fs;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -63,6 +63,7 @@ fn main() -> SnekcloudResult<()> {
                 fs::write(options.output_file, string_content)?;
             }
             SubCommand::WriteInfoFile(options) => {
+                settings.validate();
                 let key = get_private_key(&settings)?;
                 let data = NodeData::with_addresses(
                     settings.node_id,
@@ -80,10 +81,19 @@ fn main() -> SnekcloudResult<()> {
 }
 
 fn start_server(_options: Opt, settings: &Settings) -> SnekcloudResult<()> {
+    settings.validate();
     let keys = read_node_keys(&settings.node_data_dir)?;
+    let private_key = get_private_key(settings)?;
+    let data = NodeData::with_addresses(
+        settings.node_id.clone(),
+        settings.listen_addresses.clone(),
+        private_key.public_key(),
+    );
+    data.write_to_file(settings.node_data_dir.join(PathBuf::from("local.toml")))?;
+
     let mut server = SnekcloudServer::new(
         settings.node_id.clone(),
-        get_private_key(settings)?,
+        private_key,
         keys,
         settings.num_threads,
     );

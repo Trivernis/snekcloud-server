@@ -4,6 +4,7 @@ use crate::utils::result::{SnekcloudError, SnekcloudResult};
 use crate::utils::settings::get_settings;
 use parking_lot::Mutex;
 use scheduled_thread_pool::ScheduledThreadPool;
+use std::cmp::{max, min};
 use std::collections::HashMap;
 use std::mem;
 use std::sync::mpsc::channel;
@@ -30,6 +31,7 @@ pub struct SnekcloudServer {
 impl SnekcloudServer {
     /// Creates a new snekcloud server with the provided keys and number of threads
     pub fn new(id: String, private_key: SecretKey, keys: Vec<Node>, num_threads: usize) -> Self {
+        let num_threads = max(max(num_cpus::get(), num_threads), 4);
         Self {
             inner: VentedServer::new(
                 id,

@@ -1,6 +1,7 @@
 use crate::data::node_data::NodeData;
 use crate::utils::result::{SnekcloudError, SnekcloudResult};
 use crate::utils::settings::get_settings;
+use crate::utils::validate_node_id;
 use std::fs::create_dir;
 use std::path::{Path, PathBuf};
 use vented::server::data::Node;
@@ -18,10 +19,19 @@ pub fn read_node_keys(path: &PathBuf) -> SnekcloudResult<Vec<Node>> {
         create_dir(path)?;
     }
     let trusted_nodes = get_settings().trusted_nodes;
+    let own_id = get_settings().node_id;
 
     let content = glob::glob(format!("{}/*.toml", path.to_string_lossy()).as_str())?
         .filter_map(|path| {
-            let data = NodeData::from_file(path.ok()?).ok()?;
+            let path = path.ok()?;
+            if path
+                .file_name()?
+                .to_string_lossy()
+                .eq_ignore_ascii_case("local")
+            {
+                return None;
+            }
+            let data = NodeData::from_file(path).ok()?;
 
             Some(Node {
                 public_key: data.public_key(),
@@ -30,6 +40,7 @@ pub fn read_node_keys(path: &PathBuf) -> SnekcloudResult<Vec<Node>> {
                 id: data.id,
             })
         })
+        .filter(|node| validate_node_id(&node.id) && node.id != own_id)
         .collect();
 
     Ok(content)

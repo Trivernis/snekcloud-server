@@ -1,0 +1,11 @@
+.idea
+.git
+.env
+.gitignore
+*.md
+target
+Dockerfile
+testdata
+nodes
+config
+logs
