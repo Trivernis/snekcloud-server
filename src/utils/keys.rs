@@ -62,12 +62,9 @@ pub fn extract_public_key(content: &str) -> SnekcloudResult<PublicKey> {
 
 /// Extracts a base64 encoded key between the prefix and suffix
 fn extract_key(content: &str, prefix: &str, suffix: &str) -> SnekcloudResult<[u8; 32]> {
-    let mut content = content
-        .strip_prefix(prefix)
-        .ok_or(SnekcloudError::InvalidKey)?;
-    content = content
-        .strip_suffix(suffix)
-        .ok_or(SnekcloudError::InvalidKey)?;
+    if !content.starts_with(prefix) || !content.ends_with(suffix) {}
+    let mut content = content.trim_start_matches(prefix);
+    content = content.trim_end_matches(suffix);
 
     let key = base64::decode(content)?;
     if key.len() != 32 {

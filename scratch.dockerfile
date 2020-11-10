@@ -1,4 +1,5 @@
-FROM rust AS builder
+FROM alpine AS builder
+RUN apk add --no-cache build-base cargo
 WORKDIR /usr/src
 RUN USER=root cargo new snekcloud-server
 WORKDIR /usr/src/snekcloud-server
@@ -14,4 +15,4 @@ FROM scratch
 COPY --from=builder /usr/src/snekcloud-server/target/release/snekcloud-server .
 COPY --from=builder /usr/src/snekcloud-server/target/release/config /
 COPY --from=builder /usr/src/snekcloud-server/target/release/private_key /
-ENTRYPOINT ["./snekcloud-server"]
+ENTRYPOINT ["/snekcloud-server"]
