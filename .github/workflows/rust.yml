@@ -22,10 +22,11 @@ jobs:
         path: |
           target/**/build
           target/**/deps
-        key: ${{ runner.os }}-build-${{ hashFiles('**/package-lock.json') }}
+          target/**/incremental
+        key: ${{ runner.os }}-build-${{ hashFiles('Cargo.lock') }}
         restore-keys: |
+          ${{ runner.os }}-build-${{ hashFiles('Cargo.lock') }}
           ${{ runner.os }}-build-
-          ${{ runner.os }}-
     - name: Build
       run: cargo build --verbose
     - name: Run tests
