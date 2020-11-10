@@ -18,5 +18,11 @@ jobs:
     - uses: actions/checkout@v2
     - name: Build
       run: cargo build --verbose
+    - name: Cache build data
+      uses: actions/cache@v2
+      with:
+        path: |
+          target/**/build
+          target/**/deps
     - name: Run tests
       run: cargo test --verbose
