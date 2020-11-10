@@ -127,9 +127,16 @@ impl Module for HeartbeatModule {
                 );
                 let states = Arc::clone(&self.node_states);
                 pool.execute(move || {
-                    if let Some(Err(e)) = future.get_value_with_timeout(Duration::from_secs(10)) {
-                        log::debug!("Node {} is not reachable: {}", node.id, e);
-                        Self::insert_state(&mut states.lock(), node.id, NodeInfo::dead());
+                    match future.get_value_with_timeout(Duration::from_secs(60)) {
+                        Some(Err(e)) => {
+                            log::debug!("Node {} is not reachable: {}", node.id, e);
+                            Self::insert_state(&mut states.lock(), node.id, NodeInfo::dead());
+                        }
+                        None => {
+                            log::debug!("Node {} is not reachable: Timeout", node.id);
+                            Self::insert_state(&mut states.lock(), node.id, NodeInfo::dead());
+                        }
+                        _ => {}
                     }
                 });
             }

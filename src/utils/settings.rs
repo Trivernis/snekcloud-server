@@ -6,6 +6,8 @@ use config::File;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
+use vented::server::data::ServerTimeouts;
 
 const CONFIG_DIR: &str = "config/";
 const DEFAULT_CONFIG: &str = "config/00_default.toml";
@@ -21,6 +23,9 @@ pub struct Settings {
     pub num_threads: usize,
     /// List of trusted nodes
     pub trusted_nodes: Vec<String>,
+    pub send_timeout_secs: u64,
+    pub redirect_timeout_secs: u64,
+    pub log_folder: PathBuf,
     // modules need to be last because it's a table
     pub modules: ModuleSettings,
 }
@@ -38,8 +43,11 @@ impl Default for Settings {
             node_id: get_node_id(),
             private_key: PathBuf::from("node_key"),
             node_data_dir: PathBuf::from("nodes"),
+            log_folder: PathBuf::from("logs"),
             trusted_nodes: vec![],
             num_threads: num_cpus::get(),
+            send_timeout_secs: 5,
+            redirect_timeout_secs: 20,
             modules: ModuleSettings::default(),
         }
     }
@@ -80,4 +88,13 @@ fn load_settings() -> SnekcloudResult<Settings> {
         .merge(config::Environment::with_prefix(ENV_PREFIX))?;
 
     settings.try_into().map_err(SnekcloudError::from)
+}
+
+impl Settings {
+    pub fn timeouts(&self) -> ServerTimeouts {
+        ServerTimeouts {
+            redirect_timeout: Duration::from_secs(self.redirect_timeout_secs),
+            send_timeout: Duration::from_secs(self.send_timeout_secs),
+        }
+    }
 }

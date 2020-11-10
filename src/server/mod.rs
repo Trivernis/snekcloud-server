@@ -1,9 +1,9 @@
 use crate::modules::Module;
 use crate::server::tick_context::TickContext;
 use crate::utils::result::{SnekcloudError, SnekcloudResult};
+use crate::utils::settings::get_settings;
 use parking_lot::Mutex;
 use scheduled_thread_pool::ScheduledThreadPool;
-use std::cmp::max;
 use std::collections::HashMap;
 use std::mem;
 use std::sync::mpsc::channel;
@@ -30,9 +30,15 @@ pub struct SnekcloudServer {
 impl SnekcloudServer {
     /// Creates a new snekcloud server with the provided keys and number of threads
     pub fn new(id: String, private_key: SecretKey, keys: Vec<Node>, num_threads: usize) -> Self {
-        let num_threads = max(num_threads, keys.len());
         Self {
-            inner: VentedServer::new(id, private_key, keys, num_threads * 2, num_threads * 10),
+            inner: VentedServer::new(
+                id,
+                private_key,
+                keys,
+                get_settings().timeouts(),
+                num_threads * 2,
+                num_threads * 10,
+            ),
             listen_addresses: Vec::new(),
             listeners: Vec::new(),
             module_pool: HashMap::new(),
