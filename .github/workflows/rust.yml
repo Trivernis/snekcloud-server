@@ -22,10 +22,11 @@ jobs:
           target/**/build
           target/**/deps
           target/**/incremental
-        key: ${{ runner.os }}-build-${{ hashFiles('Cargo.lock') }}
+          ~/.cargo/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
         restore-keys: |
-          ${{ runner.os }}-build-${{ hashFiles('Cargo.lock') }}
-          ${{ runner.os }}-build-
+          ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
+          ${{ runner.os }}-cargo-
     - name: Build
       run: cargo build --verbose
     - name: Run tests
@@ -55,8 +56,9 @@ jobs:
             target/**/deps
             target/**/incremental
             ~/.cargo/
-          key: ${{ runner.os }}-cargo-${{ github.sha }}
+          key: ${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('Cargo.lock') }}
           restore-keys: |
+            ${{ runner.os }}-cargo-${{ matrix.target }}-
             ${{ runner.os }}-cargo-
       - name: Build Release
         uses: actions-rs/cargo@v1
@@ -68,4 +70,4 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: snekcloud-server-${{ matrix.target }}
-          path: target/${{ matrix.target }}/snekcloud-server
+          path: target/${{ matrix.target }}/release/snekcloud-server
