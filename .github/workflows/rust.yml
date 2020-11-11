@@ -69,4 +69,4 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: snekcloud-server-${{ matrix.target }}
-          path: target/${{ matrix.target }}/release/snekcloud-server
+          path: target/${{ matrix.target }}/release/snekcloud-server*
