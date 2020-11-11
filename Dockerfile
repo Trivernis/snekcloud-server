@@ -18,7 +18,7 @@ RUN cp config/00_default.toml config/10_local.toml
 RUN rm private_key
 
 FROM alpine
-RUN apk add --no-cache build-base
+COPY --from=builder /usr/lib/libgcc* /usr/lib
 COPY --from=builder /tmp/snekcloud/snekcloud-server .
 COPY --from=builder /tmp/snekcloud/config /
 ENTRYPOINT ["/snekcloud-server"]
