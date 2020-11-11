@@ -2,7 +2,7 @@ name: Rust
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, actions ]
   pull_request:
     branches: [ main ]
 
@@ -10,8 +10,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-
+  build-and-test:
     runs-on: ubuntu-latest
 
     steps:
@@ -20,14 +19,54 @@ jobs:
       uses: actions/cache@v2
       with:
         path: |
-          target/**/build
-          target/**/deps
-          target/**/incremental
-        key: ${{ runner.os }}-build-${{ hashFiles('Cargo.lock') }}
+          target
+          ~/.cargo/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
         restore-keys: |
-          ${{ runner.os }}-build-${{ hashFiles('Cargo.lock') }}
-          ${{ runner.os }}-build-
+          ${{ runner.os }}-cargo-
     - name: Build
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
+    - name: Run audit
+      uses: actions-rs/audit-check@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+
+  build-releases:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [ x86_64-unknown-linux-gnu, armv7-unknown-linux-gnueabihf, aarch64-unknown-linux-gnu, x86_64-pc-windows-gnu ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Set up toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+          override: true
+      - name: Cache cargo builds
+        uses: actions/cache@v2
+        with:
+          path: |
+            target
+            ~/.cargo/
+          key: ${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ matrix.target }}-
+            ${{ runner.os }}-cargo-
+      - name: Build Release
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: build
+          args: --release --target ${{ matrix.target }}
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: snekcloud-server-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/snekcloud-server*
