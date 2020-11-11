@@ -11,7 +11,6 @@ env:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
@@ -31,3 +30,42 @@ jobs:
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
+
+
+  build-release:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [ x86_64-unknown-linux-gnu, armv7-unknown-linux-gnueabihf, aarch64-unknown-linux-gnu, x86_64-pc-windows-gnu ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Set up toolchain
+        uses: actions-rs/toolchain@v1
+          with:
+            toolchain: stable
+            target: ${{ matrix.target }}
+            override: true
+      - name: Cache cargo builds
+        uses: actions/cache@v2
+        with:
+          path: |
+            /tmp/.buildx-cache
+            target/**/build
+            target/**/deps
+            target/**/incremental
+            ~/.cargo/
+          key: ${{ runner.os }}-cargo-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+      - name: Build Release
+        uses: actions-rs/cargo@v1
+          with:
+            use-cross: true
+            command: build
+            args: --release --target ${{ matrix.target }}
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+          with:
+            name: snekcloud-server-${{ matrix.target }}
+            path: target/${{ matrix.target }}/snekcloud-server
