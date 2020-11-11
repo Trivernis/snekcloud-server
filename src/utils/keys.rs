@@ -47,6 +47,7 @@ pub fn read_node_keys(path: &PathBuf) -> SnekcloudResult<Vec<Node>> {
 }
 
 /// Reads the private key from a file
+#[inline]
 pub fn extract_private_key(content: &str) -> SnekcloudResult<SecretKey> {
     let bytes = extract_key(content, PRIVATE_KEY_HEADER_LINE, PRIVATE_KEY_FOOTER_LINE)?;
 
@@ -54,6 +55,7 @@ pub fn extract_private_key(content: &str) -> SnekcloudResult<SecretKey> {
 }
 
 /// Reads the public key from a file
+#[inline]
 pub fn extract_public_key(content: &str) -> SnekcloudResult<PublicKey> {
     let bytes = extract_key(content, PUBLIC_KEY_HEADER_LINE, PUBLIC_KEY_FOOTER_LINE)?;
 
@@ -77,6 +79,7 @@ fn extract_key(content: &str, prefix: &str, suffix: &str) -> SnekcloudResult<[u8
 }
 
 /// Encodes and encases the public key for text representation
+#[inline]
 pub fn armor_public_key(key: PublicKey) -> String {
     armor_key(
         key.to_bytes(),
@@ -86,6 +89,7 @@ pub fn armor_public_key(key: PublicKey) -> String {
 }
 
 /// Encodes and encases the secret key for text representation
+#[inline]
 pub fn armor_private_key(key: SecretKey) -> String {
     armor_key(
         key.to_bytes(),
@@ -95,11 +99,13 @@ pub fn armor_private_key(key: SecretKey) -> String {
 }
 
 /// Returns an armored key
+#[inline]
 fn armor_key(key: [u8; 32], prefix: &str, suffix: &str) -> String {
     format!("{}{}{}", prefix, base64::encode(key), suffix)
 }
 
 /// Generates a new private key
+#[inline]
 pub fn generate_private_key() -> SecretKey {
     SecretKey::generate(&mut rand::thread_rng())
 }
