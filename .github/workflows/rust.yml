@@ -25,7 +25,6 @@ jobs:
           ~/.cargo/
         key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
         restore-keys: |
-          ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
           ${{ runner.os }}-cargo-
     - name: Build
       run: cargo build --verbose
@@ -51,10 +50,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: |
-            /tmp/.buildx-cache
-            target/**/build
-            target/**/deps
-            target/**/incremental
+            target
             ~/.cargo/
           key: ${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('Cargo.lock') }}
           restore-keys: |
