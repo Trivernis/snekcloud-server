@@ -57,21 +57,8 @@ fn main() -> SnekcloudResult<()> {
 
     if let Some(command) = opt.sub_command {
         match command {
-            SubCommand::GenerateKey(options) => {
-                let key = generate_private_key();
-                let string_content = armor_private_key(key);
-                fs::write(options.output_file, string_content)?;
-            }
-            SubCommand::WriteInfoFile(options) => {
-                settings.validate();
-                let key = get_private_key(&settings)?;
-                let data = NodeData::with_addresses(
-                    settings.node_id,
-                    settings.listen_addresses,
-                    key.public_key(),
-                );
-                data.write_to_file(options.output_file)?;
-            }
+            SubCommand::GenerateKey(options) => generate_key(&options.output_file)?,
+            SubCommand::WriteInfoFile(options) => write_info_file(&settings, &options.output_file)?,
         }
     } else {
         start_server(opt, &settings)?;
@@ -80,16 +67,45 @@ fn main() -> SnekcloudResult<()> {
     Ok(())
 }
 
-fn start_server(_options: Opt, settings: &Settings) -> SnekcloudResult<()> {
+fn generate_key(output_file: &PathBuf) -> SnekcloudResult<()> {
+    log::info!("Generating new private key to {:?}", output_file);
+    let key = generate_private_key();
+    let string_content = armor_private_key(key);
+    fs::write(output_file, string_content)?;
+    log::trace!("Done!");
+
+    Ok(())
+}
+
+fn write_info_file(settings: &Settings, output_file: &PathBuf) -> SnekcloudResult<()> {
     settings.validate();
-    let keys = read_node_keys(&settings.node_data_dir)?;
-    let private_key = get_private_key(settings)?;
+    let key = get_private_key(&settings)?;
     let data = NodeData::with_addresses(
         settings.node_id.clone(),
         settings.listen_addresses.clone(),
-        private_key.public_key(),
+        key.public_key(),
     );
-    data.write_to_file(settings.node_data_dir.join(PathBuf::from("local.toml")))?;
+    log::info!("Writing info file to {:?}", output_file);
+    data.write_to_file(output_file.clone())?;
+    log::info!("Done!");
+
+    Ok(())
+}
+
+fn start_server(_options: Opt, settings: &Settings) -> SnekcloudResult<()> {
+    if !settings.private_key.exists() {
+        generate_key(&settings.private_key)?;
+    }
+    settings.validate();
+    let keys = read_node_keys(&settings.node_data_dir)?;
+    let private_key = get_private_key(settings)?;
+    write_info_file(
+        &settings,
+        &settings
+            .node_data_dir
+            .clone()
+            .join(PathBuf::from("local.toml")),
+    )?;
 
     let mut server = SnekcloudServer::new(
         settings.node_id.clone(),
@@ -108,6 +124,7 @@ fn start_server(_options: Opt, settings: &Settings) -> SnekcloudResult<()> {
     Ok(())
 }
 
+#[inline]
 fn get_private_key(settings: &Settings) -> SnekcloudResult<SecretKey> {
     extract_private_key(&fs::read_to_string(&settings.private_key)?)
 }
