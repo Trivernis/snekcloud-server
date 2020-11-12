@@ -47,28 +47,32 @@ impl Module for NodesRefreshModule {
             let update_required = Arc::clone(&self.update_required);
 
             move |event| {
-                let mut nodes = nodes.lock();
-                let mut new_nodes = false;
+                let nodes = Arc::clone(&nodes);
+                let update_required = Arc::clone(&update_required);
+                Box::pin(async move {
+                    let mut nodes = nodes.lock();
+                    let mut new_nodes = false;
 
-                for node in event.get_payload::<NodeListPayload>().ok()?.nodes {
-                    if !nodes.contains_key(&node.id) {
-                        nodes.insert(
-                            node.id.clone(),
-                            Node {
-                                id: node.id,
-                                trusted: false,
-                                public_key: PublicKey::from(node.public_key),
-                                addresses: node.addresses,
-                            },
-                        );
-                        new_nodes = true;
+                    for node in event.get_payload::<NodeListPayload>().ok()?.nodes {
+                        if !nodes.contains_key(&node.id) {
+                            nodes.insert(
+                                node.id.clone(),
+                                Node {
+                                    id: node.id,
+                                    trusted: false,
+                                    public_key: PublicKey::from(node.public_key),
+                                    addresses: node.addresses,
+                                },
+                            );
+                            new_nodes = true;
+                        }
                     }
-                }
 
-                if new_nodes {
-                    update_required.store(true, Ordering::Relaxed)
-                }
-                None
+                    if new_nodes {
+                        update_required.store(true, Ordering::Relaxed)
+                    }
+                    None
+                })
             }
         });
         pool.execute_at_fixed_rate(Duration::from_secs(10), self.settings.update_interval(), {

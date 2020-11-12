@@ -75,18 +75,21 @@ impl Module for HeartbeatModule {
             let node_states = Arc::clone(&self.node_states);
 
             move |event| {
-                let payload = event.get_payload::<HeartbeatPayload>().unwrap();
-                let latency = payload.get_beat_time().elapsed().ok()?.as_millis();
-                log::debug!("Latency to node {} is {} ms", payload.node_id, latency);
+                let node_states = Arc::clone(&node_states);
+                Box::pin(async move {
+                    let payload = event.get_payload::<HeartbeatPayload>().unwrap();
+                    let latency = payload.get_beat_time().elapsed().ok()?.as_millis();
+                    log::debug!("Latency to node {} is {} ms", payload.node_id, latency);
 
-                let mut states = node_states.lock();
-                Self::insert_state(
-                    &mut states,
-                    payload.node_id,
-                    NodeInfo::alive(latency as u64),
-                );
+                    let mut states = node_states.lock();
+                    Self::insert_state(
+                        &mut states,
+                        payload.node_id,
+                        NodeInfo::alive(latency as u64),
+                    );
 
-                None
+                    None
+                })
             }
         });
         if let Some(output) = &self.settings.output_file {

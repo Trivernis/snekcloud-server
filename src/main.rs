@@ -107,12 +107,7 @@ fn start_server(_options: Opt, settings: &Settings) -> SnekcloudResult<()> {
             .join(PathBuf::from("local.toml")),
     )?;
 
-    let mut server = SnekcloudServer::new(
-        settings.node_id.clone(),
-        private_key,
-        keys,
-        settings.num_threads,
-    );
+    let mut server = SnekcloudServer::new(settings.node_id.clone(), private_key, keys);
 
     for address in &settings.listen_addresses {
         server.add_listen_address(address.clone());

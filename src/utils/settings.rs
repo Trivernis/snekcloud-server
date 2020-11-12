@@ -24,7 +24,6 @@ pub struct Settings {
     pub node_id: String,
     pub private_key: PathBuf,
     pub node_data_dir: PathBuf,
-    pub num_threads: usize,
     pub trusted_nodes: Vec<String>,
     pub send_timeout_secs: u64,
     pub redirect_timeout_secs: u64,
@@ -48,7 +47,6 @@ impl Default for Settings {
             node_data_dir: PathBuf::from("nodes"),
             log_folder: PathBuf::from("logs"),
             trusted_nodes: vec![],
-            num_threads: num_cpus::get(),
             send_timeout_secs: 5,
             redirect_timeout_secs: 20,
             modules: ModuleSettings::default(),
@@ -87,9 +85,6 @@ impl ValidateSettings for Settings {
         }
         if !validate_node_id(&self.node_id) {
             panic!(format!("Invalid NodeID {}", self.node_id));
-        }
-        if self.num_threads == 0 {
-            panic!("Thread number must be greater than 0")
         }
         self.modules.validate();
     }
