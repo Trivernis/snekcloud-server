@@ -1,28 +1,21 @@
 use crate::modules::Module;
-use crate::server::tick_context::{EventInvocation, TickContext};
+use crate::server::tick_context::{EventInvocation, RunContext};
 use crate::utils::result::{SnekcloudError, SnekcloudResult};
 use crate::utils::settings::get_settings;
-use parking_lot::Mutex;
-use scheduled_thread_pool::ScheduledThreadPool;
 
+use async_std::sync::{channel, Receiver};
 use async_std::task;
 use std::collections::HashMap;
 use std::mem;
-use std::sync::mpsc::{channel, Receiver};
-use std::sync::Arc;
-use std::time::Duration;
 use vented::server::data::Node;
 use vented::server::VentedServer;
 use vented::stream::SecretKey;
 
 pub mod tick_context;
 
-const SERVER_TICK_RATE_MS: u64 = 10;
-
 pub struct SnekcloudServer {
     inner: VentedServer,
     listen_addresses: Vec<String>,
-    module_pool: HashMap<String, Arc<Mutex<ScheduledThreadPool>>>,
     modules: HashMap<String, Box<dyn Module + Send + Sync>>,
 }
 
@@ -32,7 +25,6 @@ impl SnekcloudServer {
         Self {
             inner: VentedServer::new(id, private_key, keys, get_settings().timeouts()),
             listen_addresses: Vec::new(),
-            module_pool: HashMap::new(),
             modules: HashMap::new(),
         }
     }
@@ -48,30 +40,17 @@ impl SnekcloudServer {
             self.inner.listen(address.clone())
         }
 
-        let modules = mem::take(&mut self.modules);
-        let (tx, rx) = channel();
-        let tick_context = TickContext::new(self.inner.node_id(), tx, self.inner.nodes_ref());
+        let mut modules = mem::take(&mut self.modules).into_iter();
+        let (tx, rx) = channel(10);
+        let tick_context = RunContext::new(self.inner.node_id(), tx, self.inner.nodes_ref());
 
-        for (name, mut module) in modules {
-            self.module_pool
-                .get(&name)
-                .unwrap()
-                .lock()
-                .execute_at_fixed_rate(
-                    Duration::from_millis(SERVER_TICK_RATE_MS),
-                    Duration::from_millis(SERVER_TICK_RATE_MS),
-                    {
-                        let mut module_pool = ScheduledThreadPool::new(1);
-                        let tick_context = TickContext::clone(&tick_context);
-                        move || {
-                            if let Err(e) =
-                                module.tick(TickContext::clone(&tick_context), &mut module_pool)
-                            {
-                                log::error!("Error when ticking module {}: {}", name, e);
-                            }
-                        }
-                    },
-                );
+        while let Some((name, mut module)) = modules.next() {
+            let tick_context = RunContext::clone(&tick_context);
+            task::spawn(async move {
+                if let Err(e) = module.run(RunContext::clone(&tick_context)).await {
+                    log::error!("Error when ticking module {}: {}", name, e);
+                }
+            });
         }
 
         task::block_on(self.handle_invocations(rx));
@@ -81,14 +60,14 @@ impl SnekcloudServer {
 
     /// Handles invocations
     async fn handle_invocations(&self, rx: Receiver<EventInvocation>) {
-        for mut invocation in rx {
-            let result = self
-                .inner
-                .emit(invocation.target_node.clone(), invocation.event)
-                .await;
-            invocation
-                .result
-                .result(result.map_err(SnekcloudError::from));
+        while let Ok(mut invocation) = rx.recv().await {
+            let inner = self.inner.clone();
+            task::spawn(async move {
+                let result = task::block_on(inner.emit(invocation.target_node, invocation.event));
+                invocation
+                    .result
+                    .result(result.map_err(SnekcloudError::from));
+            });
         }
     }
 
@@ -97,10 +76,7 @@ impl SnekcloudServer {
         &mut self,
         mut module: impl Module + Send + Sync,
     ) -> SnekcloudResult<()> {
-        let module_pool = Arc::new(Mutex::new(ScheduledThreadPool::new(2)));
-
-        module.init(&mut self.inner, &mut module_pool.lock())?;
-        self.module_pool.insert(module.name(), module_pool);
+        module.init(&mut self.inner)?;
         self.modules.insert(module.name(), module.boxed());
 
         Ok(())

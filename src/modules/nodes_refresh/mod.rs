@@ -1,16 +1,16 @@
 use crate::data::node_data::NodeData;
 use crate::modules::nodes_refresh::settings::NodesRefreshSettings;
 use crate::modules::Module;
-use crate::server::tick_context::TickContext;
+use crate::server::tick_context::RunContext;
 use crate::utils::result::SnekcloudResult;
 use crate::utils::settings::get_settings;
+use async_std::task;
+use async_trait::async_trait;
 use parking_lot::Mutex;
-use scheduled_thread_pool::ScheduledThreadPool;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::time::{Duration, Instant, UNIX_EPOCH};
 use vented::event::Event;
 use vented::server::data::Node;
 use vented::server::server_events::{NodeListPayload, NODE_LIST_REQUEST_EVENT};
@@ -22,20 +22,16 @@ pub mod settings;
 pub struct NodesRefreshModule {
     nodes: Arc<Mutex<HashMap<String, Node>>>,
     update_required: Arc<AtomicBool>,
-    last_request: Instant,
     settings: NodesRefreshSettings,
 }
 
+#[async_trait]
 impl Module for NodesRefreshModule {
     fn name(&self) -> String {
         "node_list_refresh".to_string()
     }
 
-    fn init(
-        &mut self,
-        server: &mut VentedServer,
-        pool: &mut ScheduledThreadPool,
-    ) -> SnekcloudResult<()> {
+    fn init(&mut self, server: &mut VentedServer) -> SnekcloudResult<()> {
         {
             let mut node_list = self.nodes.lock();
             for node in server.nodes() {
@@ -75,31 +71,6 @@ impl Module for NodesRefreshModule {
                 })
             }
         });
-        pool.execute_at_fixed_rate(Duration::from_secs(10), self.settings.update_interval(), {
-            let nodes = Arc::clone(&self.nodes);
-            let update_required = Arc::clone(&self.update_required);
-
-            move || {
-                if update_required.load(Ordering::Relaxed) {
-                    let nodes_folder = get_settings().node_data_dir;
-                    nodes
-                        .lock()
-                        .values()
-                        .cloned()
-                        .map(|node| {
-                            NodeData::with_addresses(node.id, node.addresses, node.public_key)
-                        })
-                        .for_each(|data| {
-                            let mut path = nodes_folder.clone();
-                            path.push(PathBuf::from(format!("{}.toml", data.id)));
-
-                            if let Err(e) = data.write_to_file(path) {
-                                log::error!("Failed to write updated node data: {}", e);
-                            }
-                        });
-                }
-            }
-        });
 
         Ok(())
     }
@@ -108,34 +79,45 @@ impl Module for NodesRefreshModule {
         Box::new(self)
     }
 
-    fn tick(
-        &mut self,
-        mut context: TickContext,
-        _: &mut ScheduledThreadPool,
-    ) -> SnekcloudResult<()> {
-        if self.last_request.elapsed() > self.settings.update_interval() {
-            context
-                .living_nodes()
-                .iter()
-                .filter(|node| node.trusted)
-                .for_each(|node| {
-                    context.emit(node.id.clone(), Event::new(NODE_LIST_REQUEST_EVENT));
-                });
-            self.last_request = Instant::now();
-        }
+    async fn run(&mut self, mut context: RunContext) -> SnekcloudResult<()> {
+        loop {
+            for node in context.living_nodes().iter().filter(|node| node.trusted) {
+                context
+                    .emit(node.id.clone(), Event::new(NODE_LIST_REQUEST_EVENT))
+                    .await;
+            }
+            if self.update_required.load(Ordering::Relaxed) {
+                self.write_node_data();
+            }
 
-        Ok(())
+            task::sleep(self.settings.update_interval()).await
+        }
     }
 }
 
 impl NodesRefreshModule {
     pub fn new() -> Self {
-        let null_time = Instant::now() - UNIX_EPOCH.elapsed().unwrap();
         Self {
             nodes: Arc::new(Mutex::new(HashMap::new())),
             settings: get_settings().modules.nodes_refresh,
-            last_request: null_time,
             update_required: Arc::new(AtomicBool::new(false)),
         }
+    }
+
+    fn write_node_data(&self) {
+        let nodes_folder = get_settings().node_data_dir;
+        self.nodes
+            .lock()
+            .values()
+            .cloned()
+            .map(|node| NodeData::with_addresses(node.id, node.addresses, node.public_key))
+            .for_each(|data| {
+                let mut path = nodes_folder.clone();
+                path.push(PathBuf::from(format!("{}.toml", data.id)));
+
+                if let Err(e) = data.write_to_file(path) {
+                    log::error!("Failed to write updated node data: {}", e);
+                }
+            });
     }
 }

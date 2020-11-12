@@ -1,12 +1,14 @@
 use crate::modules::heartbeat::payloads::HeartbeatPayload;
 use crate::modules::heartbeat::settings::HeartbeatSettings;
 use crate::modules::Module;
-use crate::server::tick_context::TickContext;
+use crate::server::tick_context::RunContext;
 use crate::utils::result::SnekcloudResult;
 use crate::utils::settings::get_settings;
 use crate::utils::write_json_pretty;
+use async_std::task;
+use async_trait::async_trait;
+use chrono::Local;
 use parking_lot::Mutex;
-use scheduled_thread_pool::ScheduledThreadPool;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -28,6 +30,7 @@ enum NodeState {
 struct NodeInfo {
     ping: Option<u64>,
     state: NodeState,
+    timestamp: String,
 }
 
 impl NodeInfo {
@@ -35,18 +38,19 @@ impl NodeInfo {
         Self {
             ping: Some(ping),
             state: NodeState::Alive,
+            timestamp: Local::now().format("%Y-%m-%dT%H:%M:%S").to_string(),
         }
     }
     fn dead() -> Self {
         Self {
             ping: None,
             state: NodeState::Dead,
+            timestamp: Local::now().format("%Y-%m-%dT%H:%M:%S").to_string(),
         }
     }
 }
 
 pub struct HeartbeatModule {
-    last_tick: Instant,
     settings: HeartbeatSettings,
     node_states: Arc<Mutex<HashMap<String, Vec<NodeInfo>>>>,
 }
@@ -54,23 +58,19 @@ pub struct HeartbeatModule {
 impl HeartbeatModule {
     pub fn new() -> Self {
         Self {
-            last_tick: Instant::now(),
             settings: get_settings().modules.heartbeat,
             node_states: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 }
 
+#[async_trait]
 impl Module for HeartbeatModule {
     fn name(&self) -> String {
         "HeartbeatModule".to_string()
     }
 
-    fn init(
-        &mut self,
-        server: &mut VentedServer,
-        pool: &mut ScheduledThreadPool,
-    ) -> SnekcloudResult<()> {
+    fn init(&mut self, server: &mut VentedServer) -> SnekcloudResult<()> {
         server.on(HEARTBEAT_BEAT_EVENT, {
             let node_states = Arc::clone(&self.node_states);
 
@@ -92,19 +92,6 @@ impl Module for HeartbeatModule {
                 })
             }
         });
-        if let Some(output) = &self.settings.output_file {
-            pool.execute_at_fixed_rate(self.settings.interval(), self.settings.interval(), {
-                let path = output.clone();
-                let states = Arc::clone(&self.node_states);
-                move || {
-                    let states = states.lock();
-
-                    if let Err(e) = write_json_pretty(&path, &*states) {
-                        log::error!("Failed to write output states to file: {}", e)
-                    }
-                }
-            });
-        }
 
         Ok(())
     }
@@ -113,40 +100,39 @@ impl Module for HeartbeatModule {
         Box::new(self)
     }
 
-    fn tick(
-        &mut self,
-        mut context: TickContext,
-        pool: &mut ScheduledThreadPool,
-    ) -> SnekcloudResult<()> {
-        if self.last_tick.elapsed() > self.settings.interval() {
-            log::trace!("Sending heartbeat...");
-            for node in context.living_nodes() {
-                let mut future = context.emit(
-                    node.id.clone(),
-                    Event::with_payload(
-                        HEARTBEAT_BEAT_EVENT,
-                        &HeartbeatPayload::now(context.node_id().clone()),
-                    ),
-                );
-                let states = Arc::clone(&self.node_states);
-                pool.execute(move || {
-                    match future.get_value_with_timeout(Duration::from_secs(60)) {
-                        Some(Err(e)) => {
-                            log::debug!("Node {} is not reachable: {}", node.id, e);
-                            Self::insert_state(&mut states.lock(), node.id, NodeInfo::dead());
-                        }
-                        None => {
-                            log::debug!("Node {} is not reachable: Timeout", node.id);
-                            Self::insert_state(&mut states.lock(), node.id, NodeInfo::dead());
-                        }
-                        _ => {}
-                    }
-                });
-            }
-            self.last_tick = Instant::now();
-        }
+    async fn run(&mut self, context: RunContext) -> SnekcloudResult<()> {
+        for node in context.nodes() {
+            let mut context = context.clone();
+            let node_states = Arc::clone(&self.node_states);
+            let interval = self.settings.interval();
 
-        Ok(())
+            task::spawn(async move {
+                loop {
+                    Self::send_heartbeat(&mut context, &node.id, Arc::clone(&node_states)).await;
+
+                    if !context.check_alive(&node.id) {
+                        let start = Instant::now();
+                        while !context.check_alive(&node.id) {
+                            task::sleep(Duration::from_secs(10)).await;
+                            if start.elapsed() > interval * 100 {
+                                break;
+                            }
+                        }
+                    } else {
+                        task::sleep(interval).await
+                    }
+                }
+            });
+        }
+        loop {
+            if let Some(path) = &self.settings.output_file {
+                let states = self.node_states.lock();
+                if let Err(e) = write_json_pretty(path, &*states) {
+                    log::error!("Failed to write output states to file: {}", e)
+                }
+            }
+            task::sleep(self.settings.interval()).await
+        }
     }
 }
 
@@ -162,6 +148,38 @@ impl HeartbeatModule {
             states.push(state);
         } else {
             states.insert(id, vec![state]);
+        }
+    }
+
+    async fn send_heartbeat(
+        context: &mut RunContext,
+        target: &String,
+        states: Arc<Mutex<HashMap<String, Vec<NodeInfo>>>>,
+    ) {
+        log::trace!("Sending heartbeat to {}...", target);
+        let mut value = context
+            .emit(
+                target.clone(),
+                Event::with_payload(
+                    HEARTBEAT_BEAT_EVENT,
+                    &HeartbeatPayload::now(context.node_id().clone()),
+                ),
+            )
+            .await;
+
+        match value
+            .get_value_with_timeout_async(Duration::from_secs(60))
+            .await
+        {
+            Some(Err(e)) => {
+                log::debug!("Node {} is not reachable: {}", target, e);
+                Self::insert_state(&mut *states.lock(), target.clone(), NodeInfo::dead());
+            }
+            None => {
+                log::debug!("Node {} is not reachable: Timeout", target);
+                Self::insert_state(&mut *states.lock(), target.clone(), NodeInfo::dead());
+            }
+            _ => {}
         }
     }
 }

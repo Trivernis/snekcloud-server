@@ -47,6 +47,8 @@ pub fn init_logger() {
             )
             .unwrap_or(LevelFilter::Info),
         )
+        .level_for("async_io", log::LevelFilter::Info)
+        .level_for("polling", log::LevelFilter::Info)
         .chain(std::io::stdout())
         .chain(
             fern::log_file(log_dir.join(PathBuf::from(format!(
