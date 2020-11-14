@@ -11,7 +11,7 @@ path = "src/main.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-vented = "0.11.3"
+vented = "0.11.4"
 rusqlite = "0.24.1"
 rand = "0.7.3"
 base64 = "0.13.0"
