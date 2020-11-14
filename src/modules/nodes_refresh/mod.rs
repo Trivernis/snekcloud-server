@@ -1,3 +1,9 @@
+/*
+ * snekcloud node based network
+ * Copyright (C) 2020 trivernis
+ * See LICENSE for more information
+ */
+
 use crate::data::node_data::NodeData;
 use crate::modules::nodes_refresh::settings::NodesRefreshSettings;
 use crate::modules::Module;

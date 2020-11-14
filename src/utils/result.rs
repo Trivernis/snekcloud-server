@@ -1,3 +1,9 @@
+/*
+ * snekcloud node based network
+ * Copyright (C) 2020 trivernis
+ * See LICENSE for more information
+ */
+
 use std::error::Error;
 use std::fmt;
 use std::io;

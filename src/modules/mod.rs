@@ -1,3 +1,9 @@
+/*
+ * snekcloud node based network
+ * Copyright (C) 2020 trivernis
+ * See LICENSE for more information
+ */
+
 use crate::server::tick_context::RunContext;
 use crate::utils::result::SnekcloudResult;
 use async_trait::async_trait;

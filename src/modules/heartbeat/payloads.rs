@@ -1,7 +1,12 @@
-use serde::{Serialize, Deserialize};
-use std::time::{ UNIX_EPOCH, Duration, SystemTime};
-use std::ops::Add;
+/*
+ * snekcloud node based network
+ * Copyright (C) 2020 trivernis
+ * See LICENSE for more information
+ */
 
+use serde::{Deserialize, Serialize};
+use std::ops::Add;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 #[derive(Serialize, Deserialize)]
 pub struct HeartbeatPayload {
@@ -14,7 +19,7 @@ impl HeartbeatPayload {
         let start = SystemTime::now();
         Self {
             node_id,
-            beat_at: start.duration_since(UNIX_EPOCH).unwrap().as_millis() as u64
+            beat_at: start.duration_since(UNIX_EPOCH).unwrap().as_millis() as u64,
         }
     }
 

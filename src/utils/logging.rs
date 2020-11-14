@@ -1,3 +1,9 @@
+/*
+ * snekcloud node based network
+ * Copyright (C) 2020 trivernis
+ * See LICENSE for more information
+ */
+
 use crate::utils::settings::get_settings;
 use chrono::Local;
 use colored::*;

@@ -1,4 +1,10 @@
-use serde::{Serialize, Deserialize};
+/*
+ * snekcloud node based network
+ * Copyright (C) 2020 trivernis
+ * See LICENSE for more information
+ */
+
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -9,7 +15,7 @@ pub struct NodesRefreshSettings {
 impl Default for NodesRefreshSettings {
     fn default() -> Self {
         Self {
-            update_interval_ms: 3600000
+            update_interval_ms: 3600000,
         }
     }
 }

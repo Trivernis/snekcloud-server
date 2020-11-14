@@ -1,5 +1,11 @@
+/*
+ * snekcloud node based network
+ * Copyright (C) 2020 trivernis
+ * See LICENSE for more information
+ */
+
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use serde::{Serialize, Deserialize};
 use std::time::Duration;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

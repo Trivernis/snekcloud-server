@@ -1,3 +1,9 @@
+/*
+ * snekcloud node based network
+ * Copyright (C) 2020 trivernis
+ * See LICENSE for more information
+ */
+
 use crate::modules::Module;
 use crate::server::tick_context::{EventInvocation, RunContext};
 use crate::utils::result::{SnekcloudError, SnekcloudResult};

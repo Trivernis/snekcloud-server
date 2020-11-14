@@ -1409,9 +1409,9 @@ checksum = "f1bddf1187be692e79c5ffeab891132dfb0f236ed36a43c7ed39f1165ee20191"
 
 [[package]]
 name = "vented"
-version = "0.11.2"
+version = "0.11.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cdd0a331d4b17a1ac906ffc38825113984f244e376bd58d90affbafee5b650ed"
+checksum = "dba6d608c6b5e6abacdcf74e0a2820154fe9eb4282194266639fd05502c05228"
 dependencies = [
  "async-listen",
  "async-std",

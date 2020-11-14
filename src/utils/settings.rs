@@ -1,3 +1,9 @@
+/*
+ * snekcloud node based network
+ * Copyright (C) 2020 trivernis
+ * See LICENSE for more information
+ */
+
 use crate::modules::heartbeat::settings::HeartbeatSettings;
 use crate::modules::nodes_refresh::settings::NodesRefreshSettings;
 use crate::utils::result::SnekcloudResult;

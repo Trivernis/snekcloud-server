@@ -1,3 +1,9 @@
+/*
+ * snekcloud node based network
+ * Copyright (C) 2020 trivernis
+ * See LICENSE for more information
+ */
+
 use crate::utils::keys::{armor_public_key, extract_public_key};
 use crate::utils::result::SnekcloudResult;
 use crate::utils::write_toml_pretty;
